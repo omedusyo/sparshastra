@@ -72,8 +72,7 @@ function startStroke(e) {
     isDrawing = true;
 }
 
-// Smoothing.
-// We need to do interpolation
+// Smoothing/Interpolation.
 function continueStroke(e) {
     const pressure = e.pressure || 0.5; // fallback if no pressure support
     // ==Interpolation==

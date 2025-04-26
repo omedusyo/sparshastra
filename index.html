@@ -16,7 +16,37 @@
             <button id="eraserToggle">Eraser</button>
             <button id="clearCanvas">Clear</button>
         </div>
-        <canvas id="canvas"></canvas>
+        <div class="main-content">
+            <canvas id="canvas"></canvas>
+            <div class="layers-panel">
+                <div class="layers-header">
+                    <h3>Layers</h3>
+                    <button id="addLayer">+</button>
+                </div>
+                <div class="layers-list">
+                    <div class="layer">
+                        <div class="layer-controls">
+                            <button class="layer-up">↑</button>
+                            <button class="layer-down">↓</button>
+                            <button class="layer-delete" disabled>×</button>
+                        </div>
+                        <input type="text" class="layer-name" value="Base Layer" readonly>
+                        <input type="range" class="layer-opacity" min="0" max="100" value="100">
+                        <span class="layer-opacity-value">100%</span>
+                    </div>
+                    <div class="layer active">
+                        <div class="layer-controls">
+                            <button class="layer-up">↑</button>
+                            <button class="layer-down">↓</button>
+                            <button class="layer-delete">×</button>
+                        </div>
+                        <input type="text" class="layer-name" value="Layer 1">
+                        <input type="range" class="layer-opacity" min="0" max="100" value="100">
+                        <span class="layer-opacity-value">100%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
     <script src="index.js"></script>
 </body>

@@ -5,13 +5,15 @@ body {
 }
 
 .container {
-    max-width: 800px;
+    max-width: 1200px;
     margin: 0 auto;
-    text-align: center;
 }
 
 .controls {
     margin-bottom: 20px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
 }
 
 #brushSize {
@@ -19,8 +21,116 @@ body {
     margin: 0 10px;
 }
 
+.main-content {
+    display: flex;
+    gap: 20px;
+}
+
 #canvas {
     border: 1px solid #8e8e8e;
     background-color: white;
-    margin-top: 20px;
+}
+
+.layers-panel {
+    width: 250px;
+    border: 1px solid #8e8e8e;
+    background-color: #f5f5f5;
+    padding: 10px;
+}
+
+.layers-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.layers-header h3 {
+    margin: 0;
+}
+
+#addLayer {
+    width: 30px;
+    height: 30px;
+    border: none;
+    background-color: #4CAF50;
+    color: white;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 20px;
+}
+
+#addLayer:hover {
+    background-color: #45a049;
+}
+
+.layers-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.layer {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 10px;
+    background-color: white;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.layer.active {
+    border: 2px solid #4CAF50;
+    background-color: #f0fff0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.layer-controls {
+    display: flex;
+    gap: 5px;
+}
+
+.layer-controls button {
+    padding: 2px 5px;
+    border: 1px solid #ddd;
+    background-color: #f5f5f5;
+    cursor: pointer;
+}
+
+.layer-controls button:hover {
+    background-color: #e0e0e0;
+}
+
+.layer-delete {
+    color: #ff4444;
+    font-size: 16px;
+    padding: 0 6px !important;
+}
+
+.layer-delete:hover {
+    background-color: #ffdddd !important;
+}
+
+.layer-delete:disabled {
+    color: #ccc;
+    cursor: not-allowed;
+}
+
+.layer-name {
+    width: 100%;
+    padding: 5px;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+}
+
+.layer-opacity {
+    width: 100%;
+}
+
+.layer-opacity-value {
+    font-size: 12px;
+    color: #666;
+    text-align: right;
 } 
