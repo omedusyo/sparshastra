@@ -61,13 +61,20 @@ function continueStroke(e) {
     dy = dy / dist;
     
     const adjustedBrushSize = pressure * brushSize; // Pressure controls brush size
-    const spacing = adjustedBrushSize * 0.2; // Spacing is 20% of brush size (tweakable)
+    const spacing = adjustedBrushSize * 0.10; // Spacing is 10% of brush size (tweakable)
+    const jitterAmount = brushSize * 0.00; // 5% of brush size (tweakable)
+
     let t = 0;
     let steps = Math.floor((strokeDistance + dist) / spacing);
     console.log(steps)
     for (let i = 0; i < steps; i++) {
         t += spacing;
-        drawDab(e.offsetX + dx * t, e.offsetY + dy * t, pressure);
+        let x = e.offsetX + dx * t;
+        let y = e.offsetY + dy * t;
+        // ✨ Apply random jitter here!
+        x += (Math.random() * 2 - 1) * jitterAmount;
+        y += (Math.random() * 2 - 1) * jitterAmount;
+        drawDab(x, y, pressure);
     }
 
     strokeDistance = (strokeDistance + dist) - (steps * spacing);
