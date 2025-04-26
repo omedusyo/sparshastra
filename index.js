@@ -12,10 +12,7 @@ let isDrawing = false;
 let lastX = 0;
 let lastY = 0;
 let bufferImage = null; // Offscreen pixel buffer
-
-
-// Enable touch events
-canvas.style.touchAction = 'none';
+let baseRadius = 10; // Global base radius for brush size
 
 // Set up event listeners
 canvas.addEventListener('pointerdown', (e) => {
@@ -34,11 +31,14 @@ canvas.addEventListener('pointerout', (e) => {
     if (isDrawing) { endStroke(); }
 });
 
-
-// Update brush size display
+// Update brush size display and base radius
 brushSizeSlider.addEventListener('input', (e) => {
     brushSizeValue.textContent = e.target.value;
+    baseRadius = parseInt(e.target.value);
 });
+
+// Enable touch events
+canvas.style.touchAction = 'none';
 
 // ===Drawing===
 function startStroke(e) {
@@ -87,7 +87,7 @@ function drawDab(x, y, pressure) {
     // data is an array [R,G,B,A, R,G,B,A, ...]
     const data = bufferImage.data;
 
-    const radius = pressure * 30; // brush size based on pressure
+    const radius = pressure * baseRadius; // brush size based on pressure and base radius
     const alpha = pressure;       // opacity based on pressure
 
     // This calculates a small rectangle around (x, y)
