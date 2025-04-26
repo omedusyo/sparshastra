@@ -1,6 +1,7 @@
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 const debugView = document.getElementById('debugView');
+const debugTooltip = document.getElementById('debugTooltip');
 const brushSizeSlider = document.getElementById('brushSize');
 const brushSizeValue = document.getElementById('brushSizeValue');
 const brushColor = document.getElementById('brushColor');
@@ -31,7 +32,6 @@ let lastY = 0;
 let bufferImage = null; // Offscreen pixel buffer
 let brushSize = 10; // Brush size (radius).
 let pendingUpdate = false;
-let strokeDistance = 0; // How far we've moved since last dab
 let currentColor = '#000000'; // Current brush color
 let isEraser = false; // Whether we're in eraser mode
 
@@ -80,10 +80,34 @@ clearButton.addEventListener('click', () => {
 canvas.style.touchAction = 'none';
 
 // ===Drawing===
+function addDebugCircle(x, y, color, radius = 5) {
+    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    circle.setAttribute('cx', x);
+    circle.setAttribute('cy', y);
+    circle.setAttribute('r', radius);
+    circle.setAttribute('fill', color);
+    
+    // Add tooltip functionality
+    circle.addEventListener('mouseenter', (e) => {
+        debugTooltip.textContent = `x: ${Math.round(x)}, y: ${Math.round(y)}`;
+        debugTooltip.style.display = 'block';
+        debugTooltip.style.left = `${x + 10}px`;
+        debugTooltip.style.top = `${y + 10}px`;
+    });
+    
+    circle.addEventListener('mouseleave', () => {
+        debugTooltip.style.display = 'none';
+    });
+    
+    debugView.appendChild(circle);
+}
+
 function startStroke(e) {
     bufferImage = ctx.getImageData(0, 0, canvas.width, canvas.height);
     [lastX, lastY] = [e.offsetX, e.offsetY];
     isDrawing = true;
+
+    addDebugCircle(e.offsetX, e.offsetY, 'red', 5);
 }
 
 // Smoothing/Interpolation.
@@ -96,25 +120,53 @@ function continueStroke(e) {
     dx = dx / dist;
     dy = dy / dist;
     
+    addDebugCircle(e.offsetX, e.offsetY, 'blue', 5); // Add blue circle for each interpolated point
     const adjustedBrushSize = pressure * brushSize; // Pressure controls brush size
-    const spacing = adjustedBrushSize * 0.10; // Spacing is 10% of brush size (tweakable)
-    const jitterAmount = brushSize * 0.00; // 5% of brush size (tweakable)
+    const spacing = adjustedBrushSize * 0.50; // Spacing is 10% of brush size (tweakable)
+    console.log(pressure, adjustedBrushSize, spacing);
+    // const jitterAmount = brushSize * 0.00; // 5% of brush size (tweakable)
 
-    let t = 0;
-    let steps = Math.floor((strokeDistance + dist) / spacing);
-    console.log(steps)
+    let t = spacing;
+    let steps = Math.ceil(dist / spacing);
+    // console.log(steps)
     for (let i = 0; i < steps; i++) {
         t += spacing;
-        let x = e.offsetX + dx * t;
-        let y = e.offsetY + dy * t;
+        let x = lastX + dx * t;
+        let y = lastY + dy * t;
         // ✨ Apply random jitter here!
-        x += (Math.random() * 2 - 1) * jitterAmount;
-        y += (Math.random() * 2 - 1) * jitterAmount;
+        // x += (Math.random() * 2 - 1) * jitterAmount;
+        // y += (Math.random() * 2 - 1) * jitterAmount;
         drawDab(x, y, pressure);
     }
 
-    strokeDistance = (strokeDistance + dist) - (steps * spacing);
+    // TODO: Add a line segment
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', lastX);
+    line.setAttribute('y1', lastY);
+    line.setAttribute('x2', e.offsetX);
+    line.setAttribute('y2', e.offsetY);
+    line.setAttribute('stroke', 'green');
+    line.setAttribute('stroke-width', '4');
+    
+    // Add tooltip functionality for steps
+    line.addEventListener('mouseenter', () => {
+        debugTooltip.textContent = `steps: ${steps}, pressure: ${pressure.toFixed(2)}`;
+        debugTooltip.style.display = 'block';
+        // Position tooltip at midpoint of line
+        const midX = (lastX + e.offsetX) / 2;
+        const midY = (lastY + e.offsetY) / 2;
+        debugTooltip.style.left = `${midX + 10}px`;
+        debugTooltip.style.top = `${midY + 10}px`;
+    });
+    
+    line.addEventListener('mouseleave', () => {
+        debugTooltip.style.display = 'none';
+    });
+    
+    debugView.appendChild(line);
+
     [lastX, lastY] = [e.offsetX, e.offsetY];
+    addDebugCircle(lastX, lastY, '#cc0000', 5);
 
     if (!pendingUpdate) {
         pendingUpdate = true;
@@ -147,6 +199,8 @@ function drawDab(x, y, pressure) {
     // bufferImage is a pixel array where you directly control alpha.
     // data is an array [R,G,B,A, R,G,B,A, ...]
     const data = bufferImage.data;
+
+    // addDebugCircle(x, y, 'green', 2); // Add blue circle for each interpolated point
 
     const radius = pressure * brushSize; // brush size based on pressure and base radius
     const alpha = pressure;       // opacity based on pressure

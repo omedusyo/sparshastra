@@ -145,6 +145,7 @@ body {
 .debug-container {
     margin-bottom: 20px;
     padding: 0;
+    position: relative;
 }
 
 .debug-container h3 {
@@ -158,4 +159,15 @@ body {
     height: 400px;
     background-color: white;
     border: 1px solid #8e8e8e;
+}
+
+.debug-tooltip {
+    position: absolute;
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    pointer-events: none;
+    display: none;
 } 
