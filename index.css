@@ -10,6 +10,15 @@ body {
     text-align: center;
 }
 
+.controls {
+    margin-bottom: 20px;
+}
+
+#brushSize {
+    width: 200px;
+    margin: 0 10px;
+}
+
 #canvas {
     border: 1px solid #8e8e8e;
     background-color: white;
