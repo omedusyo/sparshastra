@@ -1,14 +1,28 @@
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
+const debugView = document.getElementById('debugView');
 const brushSizeSlider = document.getElementById('brushSize');
 const brushSizeValue = document.getElementById('brushSizeValue');
 const brushColor = document.getElementById('brushColor');
 const clearButton = document.getElementById('clearCanvas');
 const eraserToggle = document.getElementById('eraserToggle');
 
-// Set canvas size
-canvas.width = 800;
-canvas.height = 600;
+// Set canvas and debug view size
+function resizeCanvas() {
+    const containerWidth = canvas.parentElement.clientWidth;
+    canvas.width = containerWidth;
+    canvas.height = 400;
+    
+    // Match debug view dimensions to canvas
+    debugView.setAttribute('width', containerWidth);
+    debugView.setAttribute('height', 400);
+}
+
+// Initial resize
+resizeCanvas();
+
+// Resize on window resize
+window.addEventListener('resize', resizeCanvas);
 
 // Drawing state
 let isDrawing = false;
