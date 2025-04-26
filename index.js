@@ -2,6 +2,7 @@ const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 const brushSizeSlider = document.getElementById('brushSize');
 const brushSizeValue = document.getElementById('brushSizeValue');
+const brushColor = document.getElementById('brushColor');
 
 // Set canvas size
 canvas.width = 800;
@@ -15,6 +16,7 @@ let bufferImage = null; // Offscreen pixel buffer
 let brushSize = 10; // Brush size (radius).
 let pendingUpdate = false;
 let strokeDistance = 0; // How far we've moved since last dab
+let currentColor = '#000000'; // Current brush color
 
 // Set up event listeners
 canvas.addEventListener('pointerdown', (e) => {
@@ -33,10 +35,15 @@ canvas.addEventListener('pointerout', (e) => {
     if (isDrawing) { endStroke(); }
 });
 
-// Update brush size display and base radius
+// Update brush size display
 brushSizeSlider.addEventListener('input', (e) => {
     brushSizeValue.textContent = e.target.value;
     brushSize = parseInt(e.target.value);
+});
+
+// Update brush color
+brushColor.addEventListener('input', (e) => {
+    currentColor = e.target.value;
 });
 
 // Enable touch events
@@ -105,7 +112,6 @@ function endStroke() {
 
 // Draws a circle of opacity
 //  but instead of adding opacities, it uses max
-// TODO: Add color.
 function drawDab(x, y, pressure) {
     const ctxWidth = bufferImage.width;
     const ctxHeight = bufferImage.height;
@@ -115,6 +121,11 @@ function drawDab(x, y, pressure) {
 
     const radius = pressure * brushSize; // brush size based on pressure and base radius
     const alpha = pressure;       // opacity based on pressure
+
+    // Parse the hex color
+    const r = parseInt(currentColor.slice(1, 3), 16);
+    const g = parseInt(currentColor.slice(3, 5), 16);
+    const b = parseInt(currentColor.slice(5, 7), 16);
 
     // This calculates a small rectangle around (x, y)
     const rSquared = radius * radius;
@@ -145,10 +156,12 @@ function drawDab(x, y, pressure) {
                 const existingAlpha = data[index + 3] / 255;
                 const newAlpha = Math.max(existingAlpha, localAlpha);
 
-                data[index + 0] = 0; // black brush (R)
-                data[index + 1] = 0; // (G)
-                data[index + 2] = 0; // (B)
-                data[index + 3] = Math.floor(newAlpha * 255); // (A)
+                // Blend the new color with existing color based on alpha
+                const blendAlpha = localAlpha * (1 - existingAlpha);
+                data[index + 0] = Math.floor(r * blendAlpha + data[index + 0] * (1 - blendAlpha));
+                data[index + 1] = Math.floor(g * blendAlpha + data[index + 1] * (1 - blendAlpha));
+                data[index + 2] = Math.floor(b * blendAlpha + data[index + 2] * (1 - blendAlpha));
+                data[index + 3] = Math.floor(newAlpha * 255);
             }
         }
     }
