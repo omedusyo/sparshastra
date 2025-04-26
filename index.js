@@ -12,7 +12,9 @@ let isDrawing = false;
 let lastX = 0;
 let lastY = 0;
 let bufferImage = null; // Offscreen pixel buffer
-let baseRadius = 10; // Global base radius for brush size
+let brushSize = 10; // Brush size (radius).
+let pendingUpdate = false;
+let strokeDistance = 0; // How far we've moved since last dab
 
 // Set up event listeners
 canvas.addEventListener('pointerdown', (e) => {
@@ -34,7 +36,7 @@ canvas.addEventListener('pointerout', (e) => {
 // Update brush size display and base radius
 brushSizeSlider.addEventListener('input', (e) => {
     brushSizeValue.textContent = e.target.value;
-    baseRadius = parseInt(e.target.value);
+    brushSize = parseInt(e.target.value);
 });
 
 // Enable touch events
@@ -54,21 +56,38 @@ function continueStroke(e) {
     // ==Interpolation==
     let dx = (e.offsetX - lastX);
     let dy = (e.offsetY - lastY);
-    const dist = Math.sqrt(dx**2 + dy**2);
+    const dist = Math.hypot(dx, dy);
     dx = dx / dist;
     dy = dy / dist;
-    const steps = 10; // You can tweak this value for smoother or sharper curves    
+    
+    const adjustedBrushSize = pressure * brushSize; // Pressure controls brush size
+    const spacing = adjustedBrushSize * 0.2; // Spacing is 20% of brush size (tweakable)
+    let t = 0;
+    let steps = Math.floor((strokeDistance + dist) / spacing);
+    console.log(steps)
     for (let i = 0; i < steps; i++) {
-        drawDab(e.offsetX + dx * i, e.offsetY + dy * i, pressure);
+        t += spacing;
+        drawDab(e.offsetX + dx * t, e.offsetY + dy * t, pressure);
     }
-    // drawDab(e.offsetX, e.offsetY, pressure);
 
-    // Clear visible canvas
-    ctx.clearRect(0, 0, ctx.width, ctx.height);
-    // Draw buffer
-    ctx.putImageData(bufferImage, 0, 0);
-
+    strokeDistance = (strokeDistance + dist) - (steps * spacing);
     [lastX, lastY] = [e.offsetX, e.offsetY];
+
+    if (!pendingUpdate) {
+        pendingUpdate = true;
+        requestAnimationFrame(flushStroke);
+    }
+}
+
+function flushStroke() {
+    pendingUpdate = false;
+    // Clear visible canvas
+    // TODO: Do we really need this?
+    // ctx.clearRect(0, 0, ctx.width, ctx.height);
+    // Draw buffer
+    if (bufferImage) {
+        ctx.putImageData(bufferImage, 0, 0);
+    }
 }
 
 function endStroke() {
@@ -87,7 +106,7 @@ function drawDab(x, y, pressure) {
     // data is an array [R,G,B,A, R,G,B,A, ...]
     const data = bufferImage.data;
 
-    const radius = pressure * baseRadius; // brush size based on pressure and base radius
+    const radius = pressure * brushSize; // brush size based on pressure and base radius
     const alpha = pressure;       // opacity based on pressure
 
     // This calculates a small rectangle around (x, y)
