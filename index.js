@@ -4,6 +4,7 @@ const brushSizeSlider = document.getElementById('brushSize');
 const brushSizeValue = document.getElementById('brushSizeValue');
 const brushColor = document.getElementById('brushColor');
 const clearButton = document.getElementById('clearCanvas');
+const eraserToggle = document.getElementById('eraserToggle');
 
 // Set canvas size
 canvas.width = 800;
@@ -18,6 +19,7 @@ let brushSize = 10; // Brush size (radius).
 let pendingUpdate = false;
 let strokeDistance = 0; // How far we've moved since last dab
 let currentColor = '#000000'; // Current brush color
+let isEraser = false; // Whether we're in eraser mode
 
 // Set up event listeners
 canvas.addEventListener('pointerdown', (e) => {
@@ -45,6 +47,13 @@ brushSizeSlider.addEventListener('input', (e) => {
 // Update brush color
 brushColor.addEventListener('input', (e) => {
     currentColor = e.target.value;
+});
+
+// Toggle eraser mode
+eraserToggle.addEventListener('click', () => {
+    isEraser = !isEraser;
+    eraserToggle.textContent = isEraser ? 'Brush' : 'Eraser';
+    eraserToggle.style.backgroundColor = isEraser ? '#ff4444' : '';
 });
 
 // Clear canvas
@@ -161,13 +170,15 @@ function drawDab(x, y, pressure) {
 
                 // Compute new alpha
                 const existingAlpha = data[index + 3] / 255;
-                const newAlpha = Math.max(existingAlpha, localAlpha);
+                const newAlpha = isEraser ? 0 : Math.max(existingAlpha, localAlpha);
 
-                // Blend the new color with existing color based on alpha
-                const blendAlpha = localAlpha * (1 - existingAlpha);
-                data[index + 0] = Math.floor(r * blendAlpha + data[index + 0] * (1 - blendAlpha));
-                data[index + 1] = Math.floor(g * blendAlpha + data[index + 1] * (1 - blendAlpha));
-                data[index + 2] = Math.floor(b * blendAlpha + data[index + 2] * (1 - blendAlpha));
+                if (!isEraser) {
+                    // Blend the new color with existing color based on alpha
+                    const blendAlpha = localAlpha * (1 - existingAlpha);
+                    data[index + 0] = Math.floor(r * blendAlpha + data[index + 0] * (1 - blendAlpha));
+                    data[index + 1] = Math.floor(g * blendAlpha + data[index + 1] * (1 - blendAlpha));
+                    data[index + 2] = Math.floor(b * blendAlpha + data[index + 2] * (1 - blendAlpha));
+                }
                 data[index + 3] = Math.floor(newAlpha * 255);
             }
         }
