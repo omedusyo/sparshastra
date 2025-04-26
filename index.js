@@ -3,6 +3,7 @@ const ctx = canvas.getContext('2d');
 const brushSizeSlider = document.getElementById('brushSize');
 const brushSizeValue = document.getElementById('brushSizeValue');
 const brushColor = document.getElementById('brushColor');
+const clearButton = document.getElementById('clearCanvas');
 
 // Set canvas size
 canvas.width = 800;
@@ -44,6 +45,12 @@ brushSizeSlider.addEventListener('input', (e) => {
 // Update brush color
 brushColor.addEventListener('input', (e) => {
     currentColor = e.target.value;
+});
+
+// Clear canvas
+clearButton.addEventListener('click', () => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    bufferImage = ctx.getImageData(0, 0, canvas.width, canvas.height);
 });
 
 // Enable touch events
