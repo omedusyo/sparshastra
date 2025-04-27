@@ -30,13 +30,16 @@ let isDrawing = false;
 let lastX = 0;
 let lastY = 0;
 let bufferImage = null; // Offscreen pixel buffer
-let brushSize = 10; // Brush size (radius).
+let brushSize = CONFIG.DEFAULT_BRUSH_SIZE; // Brush size (radius).
 let pendingUpdate = false;
 let currentColor = '#000000'; // Current brush color
 let isEraser = false; // Whether we're in eraser mode
 let lastPressure = 0.5; // Track the last known pressure value
-const PRESSURE_THRESHOLD = 0.1; // Consider pressure effectively 0 below this value
+const PRESSURE_THRESHOLD = CONFIG.PRESSURE_THRESHOLD; // Consider pressure effectively 0 below this value
 let isDebugEnabled = true; // Debug view is enabled by default
+
+// Initialize current brush
+let currentBrush = brushes.basic;
 
 // Set up event listeners
 canvas.addEventListener('pointerdown', (e) => {
@@ -90,6 +93,12 @@ debugToggle.addEventListener('click', () => {
     isDebugEnabled = !isDebugEnabled;
     debugContainer.style.display = isDebugEnabled ? 'block' : 'none';
     debugToggle.classList.toggle('active', isDebugEnabled);
+});
+
+// Brush selector functionality
+const brushSelector = document.getElementById('brushSelector');
+brushSelector.addEventListener('change', (e) => {
+    currentBrush = brushes[e.target.value];
 });
 
 // ===Drawing===
@@ -159,6 +168,8 @@ function continueStroke(e) {
     const pressure = currentPressure < PRESSURE_THRESHOLD ? lastPressure : currentPressure;
     lastPressure = pressure; // Update last known pressure
     
+    if (pressure < PRESSURE_THRESHOLD) { return; }
+    
     // ==Interpolation==
     let dx = (e.offsetX - lastX);
     let dy = (e.offsetY - lastY);
@@ -166,22 +177,17 @@ function continueStroke(e) {
     dx = dx / dist;
     dy = dy / dist;
     
-    addDebugCircle(e.offsetX, e.offsetY, 'blue', 5); // Add blue circle for each interpolated point
-    const adjustedBrushSize = pressure * brushSize; // Pressure controls brush size
-    const spacing = Math.max(1, adjustedBrushSize * 0.50); // Spacing is 10% of brush size (tweakable)
-    // const jitterAmount = brushSize * 0.00; // 5% of brush size (tweakable)
+    addDebugCircle(e.offsetX, e.offsetY, 'blue', 5);
+    const adjustedBrushSize = pressure * brushSize;
+    const spacing = Math.max(1, adjustedBrushSize * 0.50);
 
     let t = spacing;
     let steps = Math.ceil(dist / spacing);
-    // console.log(steps)
     for (let i = 0; i < steps; i++) {
         t += spacing;
         let x = lastX + dx * t;
         let y = lastY + dy * t;
-        // ✨ Apply random jitter here!
-        // x += (Math.random() * 2 - 1) * jitterAmount;
-        // y += (Math.random() * 2 - 1) * jitterAmount;
-        drawDab(x, y, pressure);
+        currentBrush.drawDab(x, y, pressure, bufferImage, currentColor, isEraser);
     }
 
     drawDebugLine(lastX, lastY, e.offsetX, e.offsetY, steps, pressure);
@@ -210,66 +216,4 @@ function endStroke() {
     ctx.putImageData(bufferImage, 0, 0);
     bufferImage = null;
     isDrawing = false;
-}
-
-// Draws a circle of opacity
-//  but instead of adding opacities, it uses max
-function drawDab(x, y, pressure) {
-    if (pressure < PRESSURE_THRESHOLD) { return; }
-    const ctxWidth = bufferImage.width;
-    const ctxHeight = bufferImage.height;
-    // bufferImage is a pixel array where you directly control alpha.
-    // data is an array [R,G,B,A, R,G,B,A, ...]
-    const data = bufferImage.data;
-
-    // addDebugCircle(x, y, 'green', 2); // Add blue circle for each interpolated point
-
-    const radius = pressure * brushSize; // brush size based on pressure and base radius
-    const alpha = pressure;       // opacity based on pressure
-
-    // Parse the hex color
-    const r = parseInt(currentColor.slice(1, 3), 16);
-    const g = parseInt(currentColor.slice(3, 5), 16);
-    const b = parseInt(currentColor.slice(5, 7), 16);
-
-    // This calculates a small rectangle around (x, y)
-    const rSquared = radius * radius;
-    const startX = Math.max(0, Math.floor(x - radius));
-    const endX = Math.min(ctxWidth - 1, Math.ceil(x + radius));
-    const startY = Math.max(0, Math.floor(y - radius));
-    const endY = Math.min(ctxHeight - 1, Math.ceil(y + radius));
-
-    for (let j = startY; j <= endY; j++) {
-        for (let i = startX; i <= endX; i++) {
-            // note that (i, j) is a pixel inside the recntagle)
-            // find the distance of the pixel (i, j)
-            const dx = i - x;
-            const dy = j - y;
-            const distSquared = dx*dx + dy*dy;
-            if (distSquared <= rSquared) {
-                // Now (i, j) is inside the circle
-                
-                // This transforms (i, j) ~> index into the data array.
-                const index = (j * ctxWidth + i) * 4;
-                
-                // Simple falloff (optional)
-                // const dist = Math.sqrt(distSquared);
-                // const localAlpha = alpha * (1 - dist / radius);
-                const localAlpha = alpha;
-
-                // Compute new alpha
-                const existingAlpha = data[index + 3] / 255;
-                const newAlpha = isEraser ? 0 : Math.max(existingAlpha, localAlpha);
-
-                if (!isEraser) {
-                    // Blend the new color with existing color based on alpha
-                    const blendAlpha = localAlpha * (1 - existingAlpha);
-                    data[index + 0] = Math.floor(r * blendAlpha + data[index + 0] * (1 - blendAlpha));
-                    data[index + 1] = Math.floor(g * blendAlpha + data[index + 1] * (1 - blendAlpha));
-                    data[index + 2] = Math.floor(b * blendAlpha + data[index + 2] * (1 - blendAlpha));
-                }
-                data[index + 3] = Math.floor(newAlpha * 255);
-            }
-        }
-    }
 }
