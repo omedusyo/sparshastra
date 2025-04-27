@@ -267,10 +267,140 @@ class PaperTextureBrush extends Brush {
     }
 }
 
+class TextureBrush extends Brush {
+    constructor(textureImage) {
+        super();
+        this.name = 'Texture';
+        this.textureImage = textureImage;
+        this.textureData = null;
+        this.textureWidth = 0;
+        this.textureHeight = 0;
+        
+        // Convert texture image to ImageData for pixel access
+        this.prepareTexture();
+    }
+
+    prepareTexture() {
+        // Create a temporary canvas to get ImageData from the texture
+        const tempCanvas = document.createElement('canvas');
+        const tempCtx = tempCanvas.getContext('2d');
+        
+        // Set canvas size to match texture
+        tempCanvas.width = this.textureImage.width;
+        tempCanvas.height = this.textureImage.height;
+        
+        // Draw texture to canvas
+        tempCtx.drawImage(this.textureImage, 0, 0);
+        
+        // Get ImageData
+        this.textureData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height).data;
+        this.textureWidth = tempCanvas.width;
+        this.textureHeight = tempCanvas.height;
+    }
+
+    sampleTexture(x, y) {
+        // Wrap coordinates to create seamless tiling
+        const tx = Math.abs(Math.floor(x) % this.textureWidth);
+        const ty = Math.abs(Math.floor(y) % this.textureHeight);
+        
+        const index = (ty * this.textureWidth + tx) * 4;
+        return {
+            r: this.textureData[index],
+            g: this.textureData[index + 1],
+            b: this.textureData[index + 2],
+            a: this.textureData[index + 3] / 255 // Normalize alpha to 0-1
+        };
+    }
+
+    drawDab(x, y, pressure, bufferImage, color, isEraser, brushSize) {
+        if (pressure < CONFIG.PRESSURE_THRESHOLD) { return; }
+        const ctxWidth = bufferImage.width;
+        const ctxHeight = bufferImage.height;
+        const data = bufferImage.data;
+
+        const radius = pressure * brushSize;
+        const baseAlpha = pressure * 0.8;
+
+        // Parse the hex color
+        const r = parseInt(color.slice(1, 3), 16);
+        const g = parseInt(color.slice(3, 5), 16);
+        const b = parseInt(color.slice(5, 7), 16);
+
+        const rSquared = radius * radius;
+        const startX = Math.max(0, Math.floor(x - radius));
+        const endX = Math.min(ctxWidth - 1, Math.ceil(x + radius));
+        const startY = Math.max(0, Math.floor(y - radius));
+        const endY = Math.min(ctxHeight - 1, Math.ceil(y + radius));
+
+        // Scale factor for texture sampling (smaller = more detailed texture)
+        const textureScale = 0.01;
+
+        for (let j = startY; j <= endY; j++) {
+            for (let i = startX; i <= endX; i++) {
+                const dx = i - x;
+                const dy = j - y;
+                const distSquared = dx*dx + dy*dy;
+                
+                if (distSquared <= rSquared) {
+                    const index = (j * ctxWidth + i) * 4;
+                    
+                    // Calculate distance from center for falloff
+                    const dist = Math.sqrt(distSquared) / radius;
+                    const edgeFalloff = 1 - (dist * dist);
+                    
+                    // Sample texture at this position
+                    const texture = this.sampleTexture(
+                        i * textureScale,
+                        j * textureScale
+                    );
+                    
+                    // Combine texture alpha with pressure and edge falloff
+                    const localAlpha = baseAlpha * edgeFalloff * texture.a;
+
+                    const existingAlpha = data[index + 3] / 255;
+                    const newAlpha = isEraser ? 0 : Math.min(1, existingAlpha + localAlpha);
+
+                    if (!isEraser) {
+                        const blendAlpha = localAlpha * (1 - existingAlpha);
+                        
+                        // Blend texture color with brush color
+                        const finalR = Math.floor((r * texture.r / 255) * blendAlpha + data[index + 0] * (1 - blendAlpha));
+                        const finalG = Math.floor((g * texture.g / 255) * blendAlpha + data[index + 1] * (1 - blendAlpha));
+                        const finalB = Math.floor((b * texture.b / 255) * blendAlpha + data[index + 2] * (1 - blendAlpha));
+                        
+                        data[index + 0] = finalR;
+                        data[index + 1] = finalG;
+                        data[index + 2] = finalB;
+                    }
+                    data[index + 3] = Math.floor(newAlpha * 255);
+                }
+            }
+        }
+    }
+}
+
+
 // Initialize brushes
 const brushes = {
     basic: new BasicBrush(),
     pencil: new PencilBrush(),
     spray: new SprayBrush(),
-    paper: new PaperTextureBrush()
-}; 
+};
+const rustyTexture = new Image();
+rustyTexture.src = 'textures/rusty.jpg';
+rustyTexture.onload = () => {
+    brushes.rusty = new TextureBrush(rustyTexture);
+    console.log(brushes.rusty);
+};
+
+
+// Note: To use the texture brush, you'll need to:
+// 1. Load a texture image
+// 2. Create a new TextureBrush instance with the image
+// 3. Add it to the brushes object
+// Example:
+// const textureImage = new Image();
+// textureImage.src = 'path/to/texture.png';
+// textureImage.onload = () => {
+//     brushes.texture = new TextureBrush(textureImage);
+// }; 
