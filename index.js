@@ -22,6 +22,11 @@ let state = {
     lastPressure: 0.5, // Track the last known pressure value. Useful for end of the brush-stroke.
     isDebugEnabled: true, // Debug view is enabled by default
     usedColors: new Set(), // Track which colors have been used in strokes
+    colorBindings: { // Store color bindings for number keys
+        '1': '#000000', // Default black
+        '2': '#ff0000', // Default red
+        '3': '#0000ff'  // Default blue
+    },
     // Initialize current brush
     currentBrush: brushes.basic
 };
@@ -38,6 +43,7 @@ const MSG = {
     CHANGE_BRUSH_TYPE: 'CHANGE_BRUSH_TYPE',
     RESIZE_CANVAS: 'RESIZE_CANVAS',
     FLUSH_STROKE: 'FLUSH_STROKE',
+    BIND_COLOR: 'BIND_COLOR', // New message type for binding colors
     // === Debug ===
     TOGGLE_DEBUG: 'TOGGLE_DEBUG',
 };
@@ -153,6 +159,15 @@ function update(msg, state) {
             state.pendingUpdate = false;
             if (state.bufferImage) {
                 ctx.putImageData(state.bufferImage, 0, 0);
+            }
+            return state;
+
+        case MSG.BIND_COLOR:
+            // Bind current color to a number key
+            if (msg.key >= '1' && msg.key <= '3') {
+                state.colorBindings[msg.key] = state.currentColor;
+                console.log(`Bound color ${state.currentColor} to key ${msg.key}`);
+                updateColorBindingDisplay();
             }
             return state;
 
@@ -309,7 +324,13 @@ const KEYBINDINGS = {
     'd': 'debug',
     'c': 'clear',
     'q': 'decreaseSize',
-    'w': 'increaseSize'
+    'w': 'increaseSize',
+    '1': '1',
+    '2': '2',
+    '3': '3',
+    '!': '1',
+    '@': '2',
+    '#': '3',
 };
 
 // Add keyboard event listener
@@ -356,6 +377,22 @@ document.addEventListener('keydown', (e) => {
                 // Clear canvas
                 dispatch({ tag: MSG.CLEAR_CANVAS });
                 break;
+            case '1':
+            case '2':
+            case '3':
+                // Handle color selection and binding
+                if (e.shiftKey) {
+                    // Shift + number binds current color to that number
+                    dispatch({ tag: MSG.BIND_COLOR, key: KEYBINDINGS[key] });
+                } else {
+                    // Just number selects the bound color
+                    const color = state.colorBindings[key];
+                    if (color) {
+                        dispatch({ tag: MSG.CHANGE_BRUSH_COLOR, color });
+                        brushColor.value = color;
+                    }
+                }
+                break;
         }
     }
 });
@@ -367,3 +404,28 @@ const colorPalette = new ColorPalette(
         dispatch({ tag: MSG.CHANGE_BRUSH_COLOR, color });
     }
 );
+
+// Function to update color binding display
+function updateColorBindingDisplay() {
+    const bindingColors = document.querySelectorAll('.binding-color');
+    bindingColors.forEach(element => {
+        const key = element.dataset.key;
+        const color = state.colorBindings[key];
+        element.style.backgroundColor = color;
+    });
+}
+
+// Add click handlers to color binding elements
+document.querySelectorAll('.binding-color').forEach(element => {
+    element.addEventListener('click', () => {
+        const key = element.dataset.key;
+        const color = state.colorBindings[key];
+        if (color) {
+            dispatch({ tag: MSG.CHANGE_BRUSH_COLOR, color });
+            brushColor.value = color;
+        }
+    });
+});
+
+// Initialize color binding display
+updateColorBindingDisplay();
