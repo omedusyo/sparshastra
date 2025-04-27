@@ -25,6 +25,137 @@ const state = {
     currentBrush: brushes.basic
 };
 
+// Message types
+const MSG = {
+    START_STROKE: 'START_STROKE',
+    CONTINUE_STROKE: 'CONTINUE_STROKE',
+    END_STROKE: 'END_STROKE',
+    CHANGE_BRUSH_SIZE: 'CHANGE_BRUSH_SIZE',
+    CHANGE_BRUSH_COLOR: 'CHANGE_BRUSH_COLOR',
+    TOGGLE_ERASER: 'TOGGLE_ERASER',
+    CLEAR_CANVAS: 'CLEAR_CANVAS',
+    CHANGE_BRUSH_TYPE: 'CHANGE_BRUSH_TYPE',
+    RESIZE_CANVAS: 'RESIZE_CANVAS',
+    FLUSH_STROKE: 'FLUSH_STROKE',
+    // === Debug ===
+    TOGGLE_DEBUG: 'TOGGLE_DEBUG',
+};
+
+// Update function that handles state transitions based on messages
+function update(msg, state) {
+    switch (msg.tag) {
+        case MSG.START_STROKE:
+            state.bufferImage = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            [state.lastX, state.lastY] = [msg.x, msg.y];
+            state.isDrawing = true;
+            if (state.isDebugEnabled) {
+                addDebugCircle(msg.x, msg.y, 'red', 5);
+            }
+            return state;
+
+        case MSG.CONTINUE_STROKE:
+            if (!state.isDrawing) return state;
+            
+            const currentPressure = msg.pressure === undefined ? 1 : msg.pressure;
+            const pressure = currentPressure < CONFIG.PRESSURE_THRESHOLD ? state.lastPressure : currentPressure;
+            state.lastPressure = pressure;
+            
+            if (pressure < CONFIG.PRESSURE_THRESHOLD) return state;
+            
+            let dx = (msg.x - state.lastX);
+            let dy = (msg.y - state.lastY);
+            const dist = Math.hypot(dx, dy);
+            dx = dx / dist;
+            dy = dy / dist;
+            
+            if (state.isDebugEnabled) {
+                addDebugCircle(msg.x, msg.y, 'blue', 5);
+            }
+            
+            const adjustedBrushSize = pressure * state.brushSize;
+            const spacing = Math.max(1, adjustedBrushSize * 0.50);
+
+            let t = spacing;
+            let steps = Math.ceil(dist / spacing);
+            for (let i = 0; i < steps; i++) {
+                t += spacing;
+                let x = state.lastX + dx * t;
+                let y = state.lastY + dy * t;
+                state.currentBrush.drawDab(x, y, pressure, state.bufferImage, state.currentColor, state.isEraser, state.brushSize);
+            }
+
+            if (state.isDebugEnabled) {
+                drawDebugLine(state.lastX, state.lastY, msg.x, msg.y, steps, pressure);
+            }
+
+            [state.lastX, state.lastY] = [msg.x, msg.y];
+            
+            if (state.isDebugEnabled) {
+                addDebugCircle(state.lastX, state.lastY, '#cc0000', 5);
+            }
+
+            if (!state.pendingUpdate) {
+                state.pendingUpdate = true;
+                requestAnimationFrame(() => update({ tag: MSG.FLUSH_STROKE }, state));
+            }
+            return state;
+
+        case MSG.END_STROKE:
+            ctx.putImageData(state.bufferImage, 0, 0);
+            state.bufferImage = null;
+            state.isDrawing = false;
+            return state;
+
+        case MSG.CHANGE_BRUSH_SIZE:
+            state.brushSize = msg.size;
+            brushSizeValue.textContent = msg.size;
+            return state;
+
+        case MSG.CHANGE_BRUSH_COLOR:
+            state.currentColor = msg.color;
+            return state;
+
+        case MSG.TOGGLE_ERASER:
+            state.isEraser = !state.isEraser;
+            eraserToggle.textContent = state.isEraser ? 'Brush' : 'Eraser';
+            eraserToggle.style.backgroundColor = state.isEraser ? '#ff4444' : '';
+            return state;
+
+        case MSG.CLEAR_CANVAS:
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            state.bufferImage = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            return state;
+
+        case MSG.TOGGLE_DEBUG:
+            state.isDebugEnabled = !state.isDebugEnabled;
+            debugContainer.style.display = state.isDebugEnabled ? 'block' : 'none';
+            debugToggle.classList.toggle('active', state.isDebugEnabled);
+            return state;
+
+        case MSG.CHANGE_BRUSH_TYPE:
+            state.currentBrush = brushes[msg.brushType];
+            return state;
+
+        case MSG.RESIZE_CANVAS:
+            const containerWidth = canvas.parentElement.clientWidth;
+            canvas.width = containerWidth;
+            canvas.height = 400;
+            debugView.setAttribute('width', containerWidth);
+            debugView.setAttribute('height', 400);
+            return state;
+
+        case MSG.FLUSH_STROKE:
+            state.pendingUpdate = false;
+            if (state.bufferImage) {
+                ctx.putImageData(state.bufferImage, 0, 0);
+            }
+            return state;
+
+        default:
+            console.warn('Unknown message type:', msg.tag);
+            return state;
+    }
+}
 
 // Set canvas and debug view size
 function resizeCanvas() {
@@ -45,43 +176,50 @@ window.addEventListener('resize', resizeCanvas);
 
 // Set up event listeners
 canvas.addEventListener('pointerdown', (e) => {
-    startStroke(e);
+    update({ tag: MSG.START_STROKE, x: e.offsetX, y: e.offsetY }, state);
 });
 
 canvas.addEventListener('pointermove', (e) => {
-    if (state.isDrawing) { continueStroke(e); }
+    if (state.isDrawing) {
+        update({ 
+            tag: MSG.CONTINUE_STROKE, 
+            x: e.offsetX, 
+            y: e.offsetY,
+            pressure: e.pressure
+        }, state);
+    }
 });
 
-canvas.addEventListener('pointerup', (e) => {
-    if (state.isDrawing) { endStroke(); }
+canvas.addEventListener('pointerup', () => {
+    if (state.isDrawing) {
+        update({ tag: MSG.END_STROKE }, state);
+    }
 });
 
-canvas.addEventListener('pointerout', (e) => {
-    if (state.isDrawing) { endStroke(); }
+canvas.addEventListener('pointerout', () => {
+    if (state.isDrawing) {
+        update({ tag: MSG.END_STROKE }, state);
+    }
 });
 
 // Update brush size display
 brushSizeSlider.addEventListener('input', (e) => {
-    brushSizeValue.textContent = e.target.value;
-    state.brushSize = parseInt(e.target.value);
+    update({ tag: MSG.CHANGE_BRUSH_SIZE, size: parseInt(e.target.value) }, state);
 });
 
 // Update brush color
 brushColor.addEventListener('input', (e) => {
-    state.currentColor = e.target.value;
+    update({ tag: MSG.CHANGE_BRUSH_COLOR, color: e.target.value }, state);
 });
 
 // Toggle eraser mode
 eraserToggle.addEventListener('click', () => {
-    state.isEraser = !state.isEraser;
-    eraserToggle.textContent = state.isEraser ? 'Brush' : 'Eraser';
-    eraserToggle.style.backgroundColor = state.isEraser ? '#ff4444' : '';
+    update({ tag: MSG.TOGGLE_ERASER }, state);
 });
 
 // Clear canvas
 clearButton.addEventListener('click', () => {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    state.bufferImage = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    update({ tag: MSG.CLEAR_CANVAS }, state);
 });
 
 // Enable touch events
@@ -92,15 +230,13 @@ const debugToggle = document.getElementById('debugToggle');
 const debugContainer = document.querySelector('.debug-container');
 
 debugToggle.addEventListener('click', () => {
-    state.isDebugEnabled = !state.isDebugEnabled;
-    debugContainer.style.display = state.isDebugEnabled ? 'block' : 'none';
-    debugToggle.classList.toggle('active', state.isDebugEnabled);
+    update({ tag: MSG.TOGGLE_DEBUG }, state);
 });
 
 // Brush selector functionality
 const brushSelector = document.getElementById('brushSelector');
 brushSelector.addEventListener('change', (e) => {
-    state.currentBrush = brushes[e.target.value];
+    update({ tag: MSG.CHANGE_BRUSH_TYPE, brushType: e.target.value }, state);
 });
 
 // ===Drawing===
@@ -163,7 +299,6 @@ function drawDebugLine(x1, y1, x2, y2, steps, pressure) {
     debugView.appendChild(line);
 }
 
-// Smoothing/Interpolation.
 function continueStroke(e) {
     // Use last known pressure if current pressure is below threshold
     const currentPressure = e.pressure === undefined ? 1 : e.pressure;
