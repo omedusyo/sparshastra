@@ -48,9 +48,7 @@ function update(msg, state) {
             state.bufferImage = ctx.getImageData(0, 0, canvas.width, canvas.height);
             [state.lastX, state.lastY] = [msg.x, msg.y];
             state.isDrawing = true;
-            if (state.isDebugEnabled) {
-                addDebugCircle(msg.x, msg.y, 'red', 5);
-            }
+            addDebugCircle(msg.x, msg.y, 'red', 5);
             return state;
 
         case MSG.CONTINUE_STROKE:
@@ -68,9 +66,7 @@ function update(msg, state) {
             dx = dx / dist;
             dy = dy / dist;
             
-            if (state.isDebugEnabled) {
-                addDebugCircle(msg.x, msg.y, 'blue', 5);
-            }
+            addDebugCircle(msg.x, msg.y, 'blue', 5);
             
             const adjustedBrushSize = pressure * state.brushSize;
             const spacing = Math.max(1, adjustedBrushSize * 0.50);
@@ -84,15 +80,11 @@ function update(msg, state) {
                 state.currentBrush.drawDab(x, y, pressure, state.bufferImage, state.currentColor, state.isEraser, state.brushSize);
             }
 
-            if (state.isDebugEnabled) {
-                drawDebugLine(state.lastX, state.lastY, msg.x, msg.y, steps, pressure);
-            }
+            drawDebugLine(state.lastX, state.lastY, msg.x, msg.y, steps, pressure);
 
             [state.lastX, state.lastY] = [msg.x, msg.y];
             
-            if (state.isDebugEnabled) {
-                addDebugCircle(state.lastX, state.lastY, '#cc0000', 5);
-            }
+            addDebugCircle(state.lastX, state.lastY, '#cc0000', 5);
 
             if (!state.pendingUpdate) {
                 state.pendingUpdate = true;
@@ -263,14 +255,6 @@ function addDebugCircle(x, y, color, radius = 5) {
     debugView.appendChild(circle);
 }
 
-function startStroke(e) {
-    state.bufferImage = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    [state.lastX, state.lastY] = [e.offsetX, e.offsetY];
-    state.isDrawing = true;
-
-    addDebugCircle(e.offsetX, e.offsetY, 'red', 5);
-}
-
 function drawDebugLine(x1, y1, x2, y2, steps, pressure) {
     if (!state.isDebugEnabled) return;
     const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
@@ -297,60 +281,4 @@ function drawDebugLine(x1, y1, x2, y2, steps, pressure) {
     });
     
     debugView.appendChild(line);
-}
-
-function continueStroke(e) {
-    // Use last known pressure if current pressure is below threshold
-    const currentPressure = e.pressure === undefined ? 1 : e.pressure;
-    const pressure = currentPressure < CONFIG.PRESSURE_THRESHOLD ? state.lastPressure : currentPressure;
-    state.lastPressure = pressure; // Update last known pressure
-    
-    if (pressure < CONFIG.PRESSURE_THRESHOLD) { return; }
-    
-    // ==Interpolation==
-    let dx = (e.offsetX - state.lastX);
-    let dy = (e.offsetY - state.lastY);
-    const dist = Math.hypot(dx, dy);
-    dx = dx / dist;
-    dy = dy / dist;
-    
-    addDebugCircle(e.offsetX, e.offsetY, 'blue', 5);
-    const adjustedBrushSize = pressure * state.brushSize;
-    const spacing = Math.max(1, adjustedBrushSize * 0.50);
-
-    let t = spacing;
-    let steps = Math.ceil(dist / spacing);
-    for (let i = 0; i < steps; i++) {
-        t += spacing;
-        let x = state.lastX + dx * t;
-        let y = state.lastY + dy * t;
-        state.currentBrush.drawDab(x, y, pressure, state.bufferImage, state.currentColor, state.isEraser, state.brushSize);
-    }
-
-    drawDebugLine(state.lastX, state.lastY, e.offsetX, e.offsetY, steps, pressure);
-
-    [state.lastX, state.lastY] = [e.offsetX, e.offsetY];
-    addDebugCircle(state.lastX, state.lastY, '#cc0000', 5);
-
-    if (!state.pendingUpdate) {
-        state.pendingUpdate = true;
-        requestAnimationFrame(flushStroke);
-    }
-}
-
-function flushStroke() {
-    state.pendingUpdate = false;
-    // Clear visible canvas
-    // TODO: Do we really need this?
-    // ctx.clearRect(0, 0, ctx.width, ctx.height);
-    // Draw buffer
-    if (state.bufferImage) {
-        ctx.putImageData(state.bufferImage, 0, 0);
-    }
-}
-
-function endStroke() {
-    ctx.putImageData(state.bufferImage, 0, 0);
-    state.bufferImage = null;
-    state.isDrawing = false;
 }
