@@ -429,3 +429,25 @@ document.querySelectorAll('.binding-color').forEach(element => {
 
 // Initialize color binding display
 updateColorBindingDisplay();
+
+// Add event listener for save button
+document.getElementById('saveCanvas').addEventListener('click', () => {
+    // Create a temporary canvas to draw the final image
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = canvas.width;
+    tempCanvas.height = canvas.height;
+    const tempCtx = tempCanvas.getContext('2d');
+
+    // Fill with white background
+    tempCtx.fillStyle = 'white';
+    tempCtx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Draw the main canvas content
+    tempCtx.drawImage(canvas, 0, 0);
+
+    // Convert to PNG and trigger download
+    const link = document.createElement('a');
+    link.download = 'drawing.png';
+    link.href = tempCanvas.toDataURL('image/png');
+    link.click();
+});
