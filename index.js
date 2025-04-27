@@ -36,6 +36,7 @@ let currentColor = '#000000'; // Current brush color
 let isEraser = false; // Whether we're in eraser mode
 let lastPressure = 0.5; // Track the last known pressure value
 const PRESSURE_THRESHOLD = 0.1; // Consider pressure effectively 0 below this value
+let isDebugEnabled = true; // Debug view is enabled by default
 
 // Set up event listeners
 canvas.addEventListener('pointerdown', (e) => {
@@ -81,8 +82,19 @@ clearButton.addEventListener('click', () => {
 // Enable touch events
 canvas.style.touchAction = 'none';
 
+// Debug toggle functionality
+const debugToggle = document.getElementById('debugToggle');
+const debugContainer = document.querySelector('.debug-container');
+
+debugToggle.addEventListener('click', () => {
+    isDebugEnabled = !isDebugEnabled;
+    debugContainer.style.display = isDebugEnabled ? 'block' : 'none';
+    debugToggle.classList.toggle('active', isDebugEnabled);
+});
+
 // ===Drawing===
 function addDebugCircle(x, y, color, radius = 5) {
+    if (!isDebugEnabled) return;
     const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
     circle.setAttribute('cx', x);
     circle.setAttribute('cy', y);
@@ -113,6 +125,7 @@ function startStroke(e) {
 }
 
 function drawDebugLine(x1, y1, x2, y2, steps, pressure) {
+    if (!isDebugEnabled) return;
     const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
     line.setAttribute('x1', x1);
     line.setAttribute('y1', y1);
