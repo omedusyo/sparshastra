@@ -1,24 +1,21 @@
 // Color palette configuration
+const default_colors = [
+    '#000000', // Black
+    '#FFFFFF', // White
+    '#FF0000', // Red
+    '#00FF00', // Green
+    '#0000FF', // Blue
+    '#FFFF00', // Yellow
+    '#FF00FF', // Magenta
+    '#00FFFF', // Cyan
+    '#808080', // Gray
+    '#800000', // Maroon
+    '#008000', // Dark Green
+    '#000080', // Navy
+];
 const PALETTE_CONFIG = {
-    DEFAULT_COLORS: [
-        '#000000', // Black
-        '#FFFFFF', // White
-        '#FF0000', // Red
-        '#00FF00', // Green
-        '#0000FF', // Blue
-        '#FFFF00', // Yellow
-        '#FF00FF', // Magenta
-        '#00FFFF', // Cyan
-        '#808080', // Gray
-        '#800000', // Maroon
-        '#008000', // Dark Green
-        '#000080', // Navy
-        '#808000', // Olive
-        '#800080', // Purple
-        '#008080', // Teal
-        '#C0C0C0'  // Silver
-    ],
-    PALETTE_SIZE: 16,
+    DEFAULT_COLORS: default_colors,
+    PALETTE_SIZE: default_colors.length,
     SWATCH_SIZE: 30,
     SWATCH_MARGIN: 2
 };
@@ -75,6 +72,7 @@ class ColorPalette {
             if (this.colors.length > PALETTE_CONFIG.PALETTE_SIZE) {
                 this.colors.shift(); // Remove oldest color if palette is full
             }
+            this.selectedColor = color;
             this.render();
         }
     }
