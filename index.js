@@ -290,3 +290,48 @@ function drawDebugLine(x1, y1, x2, y2, steps, pressure) {
     
     debugView.appendChild(line);
 }
+
+// Keyboard shortcuts mapping
+const KEYBINDINGS = {
+    'b': 'basic',
+    'p': 'pencil',
+    's': 'spray',
+    'a': 'paper',
+    'e': 'eraser',
+    'd': 'debug',
+    'c': 'clear'
+};
+
+// Add keyboard event listener
+document.addEventListener('keydown', (e) => {
+    const key = e.key.toLowerCase();
+    
+    if (KEYBINDINGS[key]) {
+        switch (KEYBINDINGS[key]) {
+            case 'basic':
+            case 'pencil':
+            case 'spray':
+            case 'paper':
+                // Switch to brush
+                dispatch({ tag: MSG.CHANGE_BRUSH_TYPE, brushType: KEYBINDINGS[key] });
+                // Update brush selector UI
+                brushSelector.value = KEYBINDINGS[key];
+                break;
+                
+            case 'eraser':
+                // Toggle eraser mode
+                dispatch({ tag: MSG.TOGGLE_ERASER });
+                break;
+                
+            case 'debug':
+                // Toggle debug view
+                dispatch({ tag: MSG.TOGGLE_DEBUG });
+                break;
+                
+            case 'clear':
+                // Clear canvas
+                dispatch({ tag: MSG.CLEAR_CANVAS });
+                break;
+        }
+    }
+});

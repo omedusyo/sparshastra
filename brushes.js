@@ -390,7 +390,6 @@ const rustyTexture = new Image();
 rustyTexture.src = 'textures/rusty.jpg';
 rustyTexture.onload = () => {
     brushes.rusty = new TextureBrush(rustyTexture);
-    console.log(brushes.rusty);
 };
 
 
