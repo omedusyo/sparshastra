@@ -34,6 +34,8 @@ let brushSize = 10; // Brush size (radius).
 let pendingUpdate = false;
 let currentColor = '#000000'; // Current brush color
 let isEraser = false; // Whether we're in eraser mode
+let lastPressure = 0.5; // Track the last known pressure value
+const PRESSURE_THRESHOLD = 0.1; // Consider pressure effectively 0 below this value
 
 // Set up event listeners
 canvas.addEventListener('pointerdown', (e) => {
@@ -139,7 +141,11 @@ function drawDebugLine(x1, y1, x2, y2, steps, pressure) {
 
 // Smoothing/Interpolation.
 function continueStroke(e) {
-    const pressure = e.pressure || 0.5; // fallback if no pressure support
+    // Use last known pressure if current pressure is below threshold
+    const currentPressure = e.pressure === undefined ? 1 : e.pressure;
+    const pressure = currentPressure < PRESSURE_THRESHOLD ? lastPressure : currentPressure;
+    lastPressure = pressure; // Update last known pressure
+    
     // ==Interpolation==
     let dx = (e.offsetX - lastX);
     let dy = (e.offsetY - lastY);
@@ -149,7 +155,7 @@ function continueStroke(e) {
     
     addDebugCircle(e.offsetX, e.offsetY, 'blue', 5); // Add blue circle for each interpolated point
     const adjustedBrushSize = pressure * brushSize; // Pressure controls brush size
-    const spacing = adjustedBrushSize * 0.50; // Spacing is 10% of brush size (tweakable)
+    const spacing = Math.max(1, adjustedBrushSize * 0.50); // Spacing is 10% of brush size (tweakable)
     // const jitterAmount = brushSize * 0.00; // 5% of brush size (tweakable)
 
     let t = spacing;
@@ -196,6 +202,7 @@ function endStroke() {
 // Draws a circle of opacity
 //  but instead of adding opacities, it uses max
 function drawDab(x, y, pressure) {
+    if (pressure < PRESSURE_THRESHOLD) { return; }
     const ctxWidth = bufferImage.width;
     const ctxHeight = bufferImage.height;
     // bufferImage is a pixel array where you directly control alpha.
