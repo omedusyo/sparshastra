@@ -21,6 +21,7 @@ let state = {
     isEraser: false, // Whether we're in eraser mode.
     lastPressure: 0.5, // Track the last known pressure value. Useful for end of the brush-stroke.
     isDebugEnabled: true, // Debug view is enabled by default
+    usedColors: new Set(), // Track which colors have been used in strokes
     // Initialize current brush
     currentBrush: brushes.basic
 };
@@ -65,6 +66,12 @@ function update(msg, state) {
             state.lastPressure = pressure;
             
             if (pressure < CONFIG.PRESSURE_THRESHOLD) return state;
+            
+            // Add color to palette if it hasn't been used before
+            if (!state.usedColors.has(state.currentColor)) {
+                state.usedColors.add(state.currentColor);
+                colorPalette.addColor(state.currentColor);
+            }
             
             let dx = (msg.x - state.lastX);
             let dy = (msg.y - state.lastY);
@@ -209,7 +216,8 @@ brushSizeSlider.addEventListener('input', (e) => {
 
 // Update brush color
 brushColor.addEventListener('input', (e) => {
-    dispatch({ tag: MSG.CHANGE_BRUSH_COLOR, color: e.target.value });
+    const color = e.target.value;
+    dispatch({ tag: MSG.CHANGE_BRUSH_COLOR, color });
 });
 
 // Toggle eraser mode
@@ -351,3 +359,11 @@ document.addEventListener('keydown', (e) => {
         }
     }
 });
+
+// Initialize color palette
+const colorPalette = new ColorPalette(
+    document.getElementById('colorPalette'),
+    (color) => {
+        dispatch({ tag: MSG.CHANGE_BRUSH_COLOR, color });
+    }
+);
