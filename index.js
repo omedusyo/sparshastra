@@ -299,7 +299,9 @@ const KEYBINDINGS = {
     'a': 'paper',
     'e': 'eraser',
     'd': 'debug',
-    'c': 'clear'
+    'c': 'clear',
+    'q': 'decreaseSize',
+    'w': 'increaseSize'
 };
 
 // Add keyboard event listener
@@ -321,6 +323,20 @@ document.addEventListener('keydown', (e) => {
             case 'eraser':
                 // Toggle eraser mode
                 dispatch({ tag: MSG.TOGGLE_ERASER });
+                break;
+                
+            case 'decreaseSize':
+                // Decrease brush size by 4, minimum 1
+                const newSizeDecrease = Math.max(1, state.brushSize - 1);
+                dispatch({ tag: MSG.CHANGE_BRUSH_SIZE, size: newSizeDecrease });
+                brushSizeSlider.value = newSizeDecrease;
+                break;
+                
+            case 'increaseSize':
+                // Increase brush size by 4, maximum 100
+                const newSizeIncrease = Math.min(100, state.brushSize + 1);
+                dispatch({ tag: MSG.CHANGE_BRUSH_SIZE, size: newSizeIncrease });
+                brushSizeSlider.value = newSizeIncrease;
                 break;
                 
             case 'debug':
