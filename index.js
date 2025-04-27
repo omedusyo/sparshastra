@@ -1,3 +1,4 @@
+// ===DOM elements===
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 const debugView = document.getElementById('debugView');
@@ -7,6 +8,23 @@ const brushSizeValue = document.getElementById('brushSizeValue');
 const brushColor = document.getElementById('brushColor');
 const clearButton = document.getElementById('clearCanvas');
 const eraserToggle = document.getElementById('eraserToggle');
+
+// ===State===
+const state = {
+    isDrawing: false,
+    lastX: 0,
+    lastY: 0,
+    bufferImage: null, // Offscreen pixel buffer
+    brushSize: CONFIG.DEFAULT_BRUSH_SIZE,
+    pendingUpdate: false,
+    currentColor: '#000000', // Current brush color.
+    isEraser: false, // Whether we're in eraser mode.
+    lastPressure: 0.5, // Track the last known pressure value. Useful for end of the brush-stroke.
+    isDebugEnabled: true, // Debug view is enabled by default
+    // Initialize current brush
+    currentBrush: brushes.basic
+};
+
 
 // Set canvas and debug view size
 function resizeCanvas() {
@@ -25,61 +43,45 @@ resizeCanvas();
 // Resize on window resize
 window.addEventListener('resize', resizeCanvas);
 
-// Drawing state
-let isDrawing = false;
-let lastX = 0;
-let lastY = 0;
-let bufferImage = null; // Offscreen pixel buffer
-let brushSize = CONFIG.DEFAULT_BRUSH_SIZE; // Brush size (radius).
-let pendingUpdate = false;
-let currentColor = '#000000'; // Current brush color
-let isEraser = false; // Whether we're in eraser mode
-let lastPressure = 0.5; // Track the last known pressure value
-const PRESSURE_THRESHOLD = CONFIG.PRESSURE_THRESHOLD; // Consider pressure effectively 0 below this value
-let isDebugEnabled = true; // Debug view is enabled by default
-
-// Initialize current brush
-let currentBrush = brushes.basic;
-
 // Set up event listeners
 canvas.addEventListener('pointerdown', (e) => {
     startStroke(e);
 });
 
 canvas.addEventListener('pointermove', (e) => {
-    if (isDrawing) { continueStroke(e); }
+    if (state.isDrawing) { continueStroke(e); }
 });
 
 canvas.addEventListener('pointerup', (e) => {
-    if (isDrawing) { endStroke(); }
+    if (state.isDrawing) { endStroke(); }
 });
 
 canvas.addEventListener('pointerout', (e) => {
-    if (isDrawing) { endStroke(); }
+    if (state.isDrawing) { endStroke(); }
 });
 
 // Update brush size display
 brushSizeSlider.addEventListener('input', (e) => {
     brushSizeValue.textContent = e.target.value;
-    brushSize = parseInt(e.target.value);
+    state.brushSize = parseInt(e.target.value);
 });
 
 // Update brush color
 brushColor.addEventListener('input', (e) => {
-    currentColor = e.target.value;
+    state.currentColor = e.target.value;
 });
 
 // Toggle eraser mode
 eraserToggle.addEventListener('click', () => {
-    isEraser = !isEraser;
-    eraserToggle.textContent = isEraser ? 'Brush' : 'Eraser';
-    eraserToggle.style.backgroundColor = isEraser ? '#ff4444' : '';
+    state.isEraser = !state.isEraser;
+    eraserToggle.textContent = state.isEraser ? 'Brush' : 'Eraser';
+    eraserToggle.style.backgroundColor = state.isEraser ? '#ff4444' : '';
 });
 
 // Clear canvas
 clearButton.addEventListener('click', () => {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    bufferImage = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    state.bufferImage = ctx.getImageData(0, 0, canvas.width, canvas.height);
 });
 
 // Enable touch events
@@ -90,20 +92,20 @@ const debugToggle = document.getElementById('debugToggle');
 const debugContainer = document.querySelector('.debug-container');
 
 debugToggle.addEventListener('click', () => {
-    isDebugEnabled = !isDebugEnabled;
-    debugContainer.style.display = isDebugEnabled ? 'block' : 'none';
-    debugToggle.classList.toggle('active', isDebugEnabled);
+    state.isDebugEnabled = !state.isDebugEnabled;
+    debugContainer.style.display = state.isDebugEnabled ? 'block' : 'none';
+    debugToggle.classList.toggle('active', state.isDebugEnabled);
 });
 
 // Brush selector functionality
 const brushSelector = document.getElementById('brushSelector');
 brushSelector.addEventListener('change', (e) => {
-    currentBrush = brushes[e.target.value];
+    state.currentBrush = brushes[e.target.value];
 });
 
 // ===Drawing===
 function addDebugCircle(x, y, color, radius = 5) {
-    if (!isDebugEnabled) return;
+    if (!state.isDebugEnabled) return;
     const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
     circle.setAttribute('cx', x);
     circle.setAttribute('cy', y);
@@ -126,15 +128,15 @@ function addDebugCircle(x, y, color, radius = 5) {
 }
 
 function startStroke(e) {
-    bufferImage = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    [lastX, lastY] = [e.offsetX, e.offsetY];
-    isDrawing = true;
+    state.bufferImage = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    [state.lastX, state.lastY] = [e.offsetX, e.offsetY];
+    state.isDrawing = true;
 
     addDebugCircle(e.offsetX, e.offsetY, 'red', 5);
 }
 
 function drawDebugLine(x1, y1, x2, y2, steps, pressure) {
-    if (!isDebugEnabled) return;
+    if (!state.isDebugEnabled) return;
     const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
     line.setAttribute('x1', x1);
     line.setAttribute('y1', y1);
@@ -165,55 +167,55 @@ function drawDebugLine(x1, y1, x2, y2, steps, pressure) {
 function continueStroke(e) {
     // Use last known pressure if current pressure is below threshold
     const currentPressure = e.pressure === undefined ? 1 : e.pressure;
-    const pressure = currentPressure < PRESSURE_THRESHOLD ? lastPressure : currentPressure;
-    lastPressure = pressure; // Update last known pressure
+    const pressure = currentPressure < CONFIG.PRESSURE_THRESHOLD ? state.lastPressure : currentPressure;
+    state.lastPressure = pressure; // Update last known pressure
     
-    if (pressure < PRESSURE_THRESHOLD) { return; }
+    if (pressure < CONFIG.PRESSURE_THRESHOLD) { return; }
     
     // ==Interpolation==
-    let dx = (e.offsetX - lastX);
-    let dy = (e.offsetY - lastY);
+    let dx = (e.offsetX - state.lastX);
+    let dy = (e.offsetY - state.lastY);
     const dist = Math.hypot(dx, dy);
     dx = dx / dist;
     dy = dy / dist;
     
     addDebugCircle(e.offsetX, e.offsetY, 'blue', 5);
-    const adjustedBrushSize = pressure * brushSize;
+    const adjustedBrushSize = pressure * state.brushSize;
     const spacing = Math.max(1, adjustedBrushSize * 0.50);
 
     let t = spacing;
     let steps = Math.ceil(dist / spacing);
     for (let i = 0; i < steps; i++) {
         t += spacing;
-        let x = lastX + dx * t;
-        let y = lastY + dy * t;
-        currentBrush.drawDab(x, y, pressure, bufferImage, currentColor, isEraser);
+        let x = state.lastX + dx * t;
+        let y = state.lastY + dy * t;
+        state.currentBrush.drawDab(x, y, pressure, state.bufferImage, state.currentColor, state.isEraser, state.brushSize);
     }
 
-    drawDebugLine(lastX, lastY, e.offsetX, e.offsetY, steps, pressure);
+    drawDebugLine(state.lastX, state.lastY, e.offsetX, e.offsetY, steps, pressure);
 
-    [lastX, lastY] = [e.offsetX, e.offsetY];
-    addDebugCircle(lastX, lastY, '#cc0000', 5);
+    [state.lastX, state.lastY] = [e.offsetX, e.offsetY];
+    addDebugCircle(state.lastX, state.lastY, '#cc0000', 5);
 
-    if (!pendingUpdate) {
-        pendingUpdate = true;
+    if (!state.pendingUpdate) {
+        state.pendingUpdate = true;
         requestAnimationFrame(flushStroke);
     }
 }
 
 function flushStroke() {
-    pendingUpdate = false;
+    state.pendingUpdate = false;
     // Clear visible canvas
     // TODO: Do we really need this?
     // ctx.clearRect(0, 0, ctx.width, ctx.height);
     // Draw buffer
-    if (bufferImage) {
-        ctx.putImageData(bufferImage, 0, 0);
+    if (state.bufferImage) {
+        ctx.putImageData(state.bufferImage, 0, 0);
     }
 }
 
 function endStroke() {
-    ctx.putImageData(bufferImage, 0, 0);
-    bufferImage = null;
-    isDrawing = false;
+    ctx.putImageData(state.bufferImage, 0, 0);
+    state.bufferImage = null;
+    state.isDrawing = false;
 }

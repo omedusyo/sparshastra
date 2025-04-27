@@ -4,7 +4,7 @@ class Brush {
         this.name = 'Base Brush';
     }
 
-    drawDab(x, y, pressure, bufferImage, color, isEraser) {
+    drawDab(x, y, pressure, bufferImage, color, isEraser, brushSize) {
         throw new Error('drawDab must be implemented by brush subclasses');
     }
 }
@@ -15,7 +15,7 @@ class BasicBrush extends Brush {
         this.name = 'Basic';
     }
 
-    drawDab(x, y, pressure, bufferImage, color, isEraser) {
+    drawDab(x, y, pressure, bufferImage, color, isEraser, brushSize) {
         if (pressure < CONFIG.PRESSURE_THRESHOLD) { return; }
         const ctxWidth = bufferImage.width;
         const ctxHeight = bufferImage.height;
@@ -72,7 +72,7 @@ class PencilBrush extends Brush {
         return Math.random() * CONFIG.PENCIL_NOISE_RANGE + CONFIG.PENCIL_NOISE_BASE;
     }
 
-    drawDab(x, y, pressure, bufferImage, color, isEraser) {
+    drawDab(x, y, pressure, bufferImage, color, isEraser, brushSize) {
         if (pressure < CONFIG.PRESSURE_THRESHOLD) { return; }
         const ctxWidth = bufferImage.width;
         const ctxHeight = bufferImage.height;
