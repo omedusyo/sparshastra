@@ -10,7 +10,7 @@ const clearButton = document.getElementById('clearCanvas');
 const eraserToggle = document.getElementById('eraserToggle');
 
 // ===State===
-const state = {
+let state = {
     isDrawing: false,
     lastX: 0,
     lastY: 0,
@@ -40,6 +40,12 @@ const MSG = {
     // === Debug ===
     TOGGLE_DEBUG: 'TOGGLE_DEBUG',
 };
+
+// Central dispatch function
+function dispatch(msg) {
+    // Update state
+    state = update(msg, state);
+}
 
 // Update function that handles state transitions based on messages
 function update(msg, state) {
@@ -88,7 +94,7 @@ function update(msg, state) {
 
             if (!state.pendingUpdate) {
                 state.pendingUpdate = true;
-                requestAnimationFrame(() => update({ tag: MSG.FLUSH_STROKE }, state));
+                requestAnimationFrame(() => dispatch({ tag: MSG.FLUSH_STROKE }));
             }
             return state;
 
@@ -164,54 +170,56 @@ function resizeCanvas() {
 resizeCanvas();
 
 // Resize on window resize
-window.addEventListener('resize', resizeCanvas);
+window.addEventListener('resize', () => {
+    dispatch({ tag: MSG.RESIZE_CANVAS });
+});
 
 // Set up event listeners
 canvas.addEventListener('pointerdown', (e) => {
-    update({ tag: MSG.START_STROKE, x: e.offsetX, y: e.offsetY }, state);
+    dispatch({ tag: MSG.START_STROKE, x: e.offsetX, y: e.offsetY });
 });
 
 canvas.addEventListener('pointermove', (e) => {
     if (state.isDrawing) {
-        update({ 
+        dispatch({ 
             tag: MSG.CONTINUE_STROKE, 
             x: e.offsetX, 
             y: e.offsetY,
             pressure: e.pressure
-        }, state);
+        });
     }
 });
 
 canvas.addEventListener('pointerup', () => {
     if (state.isDrawing) {
-        update({ tag: MSG.END_STROKE }, state);
+        dispatch({ tag: MSG.END_STROKE });
     }
 });
 
 canvas.addEventListener('pointerout', () => {
     if (state.isDrawing) {
-        update({ tag: MSG.END_STROKE }, state);
+        dispatch({ tag: MSG.END_STROKE });
     }
 });
 
 // Update brush size display
 brushSizeSlider.addEventListener('input', (e) => {
-    update({ tag: MSG.CHANGE_BRUSH_SIZE, size: parseInt(e.target.value) }, state);
+    dispatch({ tag: MSG.CHANGE_BRUSH_SIZE, size: parseInt(e.target.value) });
 });
 
 // Update brush color
 brushColor.addEventListener('input', (e) => {
-    update({ tag: MSG.CHANGE_BRUSH_COLOR, color: e.target.value }, state);
+    dispatch({ tag: MSG.CHANGE_BRUSH_COLOR, color: e.target.value });
 });
 
 // Toggle eraser mode
 eraserToggle.addEventListener('click', () => {
-    update({ tag: MSG.TOGGLE_ERASER }, state);
+    dispatch({ tag: MSG.TOGGLE_ERASER });
 });
 
 // Clear canvas
 clearButton.addEventListener('click', () => {
-    update({ tag: MSG.CLEAR_CANVAS }, state);
+    dispatch({ tag: MSG.CLEAR_CANVAS });
 });
 
 // Enable touch events
@@ -222,13 +230,13 @@ const debugToggle = document.getElementById('debugToggle');
 const debugContainer = document.querySelector('.debug-container');
 
 debugToggle.addEventListener('click', () => {
-    update({ tag: MSG.TOGGLE_DEBUG }, state);
+    dispatch({ tag: MSG.TOGGLE_DEBUG });
 });
 
 // Brush selector functionality
 const brushSelector = document.getElementById('brushSelector');
 brushSelector.addEventListener('change', (e) => {
-    update({ tag: MSG.CHANGE_BRUSH_TYPE, brushType: e.target.value }, state);
+    dispatch({ tag: MSG.CHANGE_BRUSH_TYPE, brushType: e.target.value });
 });
 
 // ===Drawing===
