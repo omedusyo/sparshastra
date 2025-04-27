@@ -110,6 +110,33 @@ function startStroke(e) {
     addDebugCircle(e.offsetX, e.offsetY, 'red', 5);
 }
 
+function drawDebugLine(x1, y1, x2, y2, steps, pressure) {
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', x1);
+    line.setAttribute('y1', y1);
+    line.setAttribute('x2', x2);
+    line.setAttribute('y2', y2);
+    line.setAttribute('stroke', 'green');
+    line.setAttribute('stroke-width', '4');
+    
+    // Add tooltip functionality for steps
+    line.addEventListener('mouseenter', () => {
+        debugTooltip.textContent = `steps: ${steps}, pressure: ${pressure.toFixed(2)}`;
+        debugTooltip.style.display = 'block';
+        // Position tooltip at midpoint of line
+        const midX = (x1 + x2) / 2;
+        const midY = (y1 + y2) / 2;
+        debugTooltip.style.left = `${midX + 10}px`;
+        debugTooltip.style.top = `${midY + 10}px`;
+    });
+    
+    line.addEventListener('mouseleave', () => {
+        debugTooltip.style.display = 'none';
+    });
+    
+    debugView.appendChild(line);
+}
+
 // Smoothing/Interpolation.
 function continueStroke(e) {
     const pressure = e.pressure || 0.5; // fallback if no pressure support
@@ -123,7 +150,6 @@ function continueStroke(e) {
     addDebugCircle(e.offsetX, e.offsetY, 'blue', 5); // Add blue circle for each interpolated point
     const adjustedBrushSize = pressure * brushSize; // Pressure controls brush size
     const spacing = adjustedBrushSize * 0.50; // Spacing is 10% of brush size (tweakable)
-    console.log(pressure, adjustedBrushSize, spacing);
     // const jitterAmount = brushSize * 0.00; // 5% of brush size (tweakable)
 
     let t = spacing;
@@ -139,31 +165,7 @@ function continueStroke(e) {
         drawDab(x, y, pressure);
     }
 
-    // TODO: Add a line segment
-    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    line.setAttribute('x1', lastX);
-    line.setAttribute('y1', lastY);
-    line.setAttribute('x2', e.offsetX);
-    line.setAttribute('y2', e.offsetY);
-    line.setAttribute('stroke', 'green');
-    line.setAttribute('stroke-width', '4');
-    
-    // Add tooltip functionality for steps
-    line.addEventListener('mouseenter', () => {
-        debugTooltip.textContent = `steps: ${steps}, pressure: ${pressure.toFixed(2)}`;
-        debugTooltip.style.display = 'block';
-        // Position tooltip at midpoint of line
-        const midX = (lastX + e.offsetX) / 2;
-        const midY = (lastY + e.offsetY) / 2;
-        debugTooltip.style.left = `${midX + 10}px`;
-        debugTooltip.style.top = `${midY + 10}px`;
-    });
-    
-    line.addEventListener('mouseleave', () => {
-        debugTooltip.style.display = 'none';
-    });
-    
-    debugView.appendChild(line);
+    drawDebugLine(lastX, lastY, e.offsetX, e.offsetY, steps, pressure);
 
     [lastX, lastY] = [e.offsetX, e.offsetY];
     addDebugCircle(lastX, lastY, '#cc0000', 5);
